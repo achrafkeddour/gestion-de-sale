@@ -1,0 +1,461 @@
+import javax.swing.*;
+import java.awt.*;
+import java.awt.List;
+import java.awt.event.*;
+import org.cloudbus.cloudsim.*;
+import org.cloudbus.cloudsim.core.CloudSim;
+import org.cloudbus.cloudsim.provisioners.BwProvisionerSimple;
+import org.cloudbus.cloudsim.provisioners.PeProvisionerSimple;
+import org.cloudbus.cloudsim.provisioners.RamProvisionerSimple;
+import java.util.*;
+import java.util.Calendar;
+
+public class InterfaceTPCLOUD extends JFrame {
+    
+    // Cloudlet Parameters
+    private JTextField jobField;
+    private JTextField lengthField;
+    private JTextField fileSizeField;
+    private JTextField outputSizeField;
+    
+    // Virtual Machine Parameters
+    private JTextField mipsField;
+    private JTextField sizeField;
+    private JTextField ramField;
+    private JTextField bandwidthField;
+    private JTextField pesNumberField;
+    
+    // Storage for simulation components
+    private List cloudletList;
+    private List vmList;
+    private Datacenter datacenter;
+    private DatacenterBroker broker;
+    private int cloudletId = 0;
+    private int vmId = 0;
+    private int brokerId;
+    
+    public InterfaceTPCLOUD() {
+        setTitle("CloudSim User Interface");
+        setSize(700, 400);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLayout(new BorderLayout(10, 10));
+        
+        // Initialize lists
+        cloudletList = new ArrayList<>();
+        vmList = new ArrayList<>();
+        
+        // Main panel with padding
+        JPanel mainPanel = new JPanel(new BorderLayout(10, 10));
+        mainPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+        
+        // Top panel for Job input
+        JPanel topPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        topPanel.add(new JLabel("Job"));
+        jobField = new JTextField("1", 5);
+        topPanel.add(jobField);
+        
+        // Center panel for parameters
+        JPanel centerPanel = new JPanel(new GridLayout(1, 2, 20, 0));
+        
+        // Left side - Cloudlet Parameters
+        JPanel cloudletPanel = createCloudletPanel();
+        centerPanel.add(cloudletPanel);
+        
+        // Right side - Virtual Machine Parameters
+        JPanel vmPanel = createVMPanel();
+        centerPanel.add(vmPanel);
+        
+        // Bottom panel for buttons
+        JPanel bottomPanel = createButtonPanel();
+        
+        // Add all panels to main panel
+        mainPanel.add(topPanel, BorderLayout.NORTH);
+        mainPanel.add(centerPanel, BorderLayout.CENTER);
+        mainPanel.add(bottomPanel, BorderLayout.SOUTH);
+        
+        add(mainPanel);
+        setLocationRelativeTo(null);
+    }
+    
+    private JPanel createCloudletPanel() {
+        JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setBorder(BorderFactory.createTitledBorder("Cloudlet Parameters"));
+        
+        // Length
+        JPanel lengthPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        lengthPanel.add(new JLabel("Length:"));
+        lengthField = new JTextField("20000", 10);
+        lengthPanel.add(lengthField);
+        panel.add(lengthPanel);
+        
+        // File Size
+        JPanel fileSizePanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        fileSizePanel.add(new JLabel("File Size:"));
+        fileSizeField = new JTextField("500", 10);
+        fileSizePanel.add(fileSizeField);
+        panel.add(fileSizePanel);
+        
+        // Output Size
+        JPanel outputSizePanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        outputSizePanel.add(new JLabel("Output Size:"));
+        outputSizeField = new JTextField("500", 10);
+        outputSizePanel.add(outputSizeField);
+        panel.add(outputSizePanel);
+        
+        // Add Cloudlet button
+        panel.add(Box.createVerticalStrut(20));
+        JButton addCloudletBtn = new JButton("Add Cloudlet");
+        addCloudletBtn.addActionListener(e -> addCloudlet());
+        JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        btnPanel.add(addCloudletBtn);
+        panel.add(btnPanel);
+        
+        return panel;
+    }
+    
+    private JPanel createVMPanel() {
+        JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setBorder(BorderFactory.createTitledBorder("Virtual Machine Parameters"));
+        
+        // MIPS
+        JPanel mipsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        mipsPanel.add(new JLabel("MIPS:"));
+        mipsField = new JTextField("200", 10);
+        mipsPanel.add(mipsField);
+        panel.add(mipsPanel);
+        
+        // Size
+        JPanel sizePanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        sizePanel.add(new JLabel("Size:"));
+        sizeField = new JTextField("1000", 10);
+        sizePanel.add(sizeField);
+        panel.add(sizePanel);
+        
+        // RAM
+        JPanel ramPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        ramPanel.add(new JLabel("Ram:"));
+        ramField = new JTextField("2048", 10);
+        ramPanel.add(ramField);
+        panel.add(ramPanel);
+        
+        // Bandwidth
+        JPanel bwPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        bwPanel.add(new JLabel("Bandwidth:"));
+        bandwidthField = new JTextField("500", 10);
+        bwPanel.add(bandwidthField);
+        panel.add(bwPanel);
+        
+        // PesNumber
+        JPanel pesPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        pesPanel.add(new JLabel("pesNumber:"));
+        pesNumberField = new JTextField("1", 10);
+        pesPanel.add(pesNumberField);
+        panel.add(pesPanel);
+        
+        // Add VM button
+        panel.add(Box.createVerticalStrut(10));
+        JButton addVMBtn = new JButton("Add VM");
+        addVMBtn.addActionListener(e -> addVM());
+        JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        btnPanel.add(addVMBtn);
+        panel.add(btnPanel);
+        
+        return panel;
+    }
+    
+    private JPanel createButtonPanel() {
+        JPanel panel = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 10));
+        
+        JButton addJobBtn = new JButton("Add Job");
+        addJobBtn.addActionListener(e -> addJob());
+        
+        JButton startSimBtn = new JButton("Start Simulation");
+        startSimBtn.addActionListener(e -> startSimulation());
+        
+        JButton exitBtn = new JButton("Exit");
+        exitBtn.addActionListener(e -> System.exit(0));
+        
+        panel.add(addJobBtn);
+        panel.add(startSimBtn);
+        panel.add(exitBtn);
+        
+        return panel;
+    }
+    
+    // ========== CloudSim Integration Methods ==========
+    
+    private void addCloudlet() {
+        try {
+            long length = Long.parseLong(lengthField.getText());
+            long fileSize = Long.parseLong(fileSizeField.getText());
+            long outputSize = Long.parseLong(outputSizeField.getText());
+            
+            // Create cloudlet
+            int pesNumber = 1; // Number of CPUs required
+            UtilizationModel utilizationModel = new UtilizationModelFull();
+            
+            Cloudlet cloudlet = new Cloudlet(
+                cloudletId++,
+                length,
+                pesNumber,
+                fileSize,
+                outputSize,
+                utilizationModel,
+                utilizationModel,
+                utilizationModel
+            );
+            
+            // Add to list
+            cloudletList.add(cloudlet);
+            
+            JOptionPane.showMessageDialog(this, 
+                "Cloudlet Added Successfully!\n" +
+                "Cloudlet ID: " + (cloudletId - 1) + "\n" +
+                "Length: " + length + "\n" +
+                "File Size: " + fileSize + "\n" +
+                "Output Size: " + outputSize + "\n" +
+                "Total Cloudlets: " + cloudletList.size());
+            
+        } catch (NumberFormatException ex) {
+            JOptionPane.showMessageDialog(this, 
+                "Please enter valid numbers!", 
+                "Error", 
+                JOptionPane.ERROR_MESSAGE);
+        }
+    }
+    
+    private void addVM() {
+        try {
+            int mips = Integer.parseInt(mipsField.getText());
+            long size = Long.parseLong(sizeField.getText());
+            int ram = Integer.parseInt(ramField.getText());
+            long bw = Long.parseLong(bandwidthField.getText());
+            int pesNumber = Integer.parseInt(pesNumberField.getText());
+            
+            // VMM name
+            String vmm = "Xen";
+            
+            // Create VM
+            Vm vm = new Vm(
+                vmId++,
+                brokerId,
+                mips,
+                pesNumber,
+                ram,
+                bw,
+                size,
+                vmm,
+                new CloudletSchedulerTimeShared()
+            );
+            
+            // Add to list
+            vmList.add(vm);
+            
+            JOptionPane.showMessageDialog(this, 
+                "VM Added Successfully!\n" +
+                "VM ID: " + (vmId - 1) + "\n" +
+                "MIPS: " + mips + "\n" +
+                "Size: " + size + "\n" +
+                "RAM: " + ram + "\n" +
+                "Bandwidth: " + bw + "\n" +
+                "PEs: " + pesNumber + "\n" +
+                "Total VMs: " + vmList.size());
+            
+        } catch (NumberFormatException ex) {
+            JOptionPane.showMessageDialog(this, 
+                "Please enter valid numbers!", 
+                "Error", 
+                JOptionPane.ERROR_MESSAGE);
+        }
+    }
+    
+    private void addJob() {
+        String jobNumber = jobField.getText();
+        JOptionPane.showMessageDialog(this, 
+            "Job " + jobNumber + " configuration updated!\n" +
+            "Current Cloudlets: " + cloudletList.size() + "\n" +
+            "Current VMs: " + vmList.size());
+    }
+    
+    private void startSimulation() {
+        // Validate we have VMs and Cloudlets
+        if (vmList.isEmpty()) {
+            JOptionPane.showMessageDialog(this, 
+                "Please add at least one VM before starting simulation!", 
+                "Error", 
+                JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        
+        if (cloudletList.isEmpty()) {
+            JOptionPane.showMessageDialog(this, 
+                "Please add at least one Cloudlet before starting simulation!", 
+                "Error", 
+                JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        
+        try {
+            // Initialize CloudSim
+            int num_user = 1;
+            Calendar calendar = Calendar.getInstance();
+            boolean trace_flag = false;
+            
+            CloudSim.init(num_user, calendar, trace_flag);
+            
+            // Create Datacenter
+            datacenter = createDatacenter("Datacenter_0");
+            
+            // Create Broker
+            broker = createBroker();
+            brokerId = broker.getId();
+            
+            // Update broker ID for all VMs
+            for (Vm vm : vmList) {
+                vm.setUserId(brokerId);
+            }
+            
+            // Submit VM list to the broker
+            broker.submitVmList(vmList);
+            
+            // Update broker ID for all cloudlets
+            for (Cloudlet cloudlet : cloudletList) {
+                cloudlet.setUserId(brokerId);
+            }
+            
+            // Submit cloudlet list to the broker
+            broker.submitCloudletList(cloudletList);
+            
+            // Start the simulation
+            CloudSim.startSimulation();
+            
+            // Get results
+            List<Cloudlet> resultList = broker.getCloudletReceivedList();
+            
+            CloudSim.stopSimulation();
+            
+            // Display results
+            displayResults(resultList);
+            
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, 
+                "Simulation Error: " + e.getMessage(), 
+                "Error", 
+                JOptionPane.ERROR_MESSAGE);
+            e.printStackTrace();
+        }
+    }
+    
+    private Datacenter createDatacenter(String name) {
+        // Create hosts
+        List<Host> hostList = new ArrayList<>();
+        
+        // Host specifications
+        int mips = 1000;
+        int hostId = 0;
+        int ram = 2048; // MB
+        long storage = 1000000; // MB
+        int bw = 10000;
+        
+        // Create PEs (Processing Elements)
+        List<Pe> peList = new ArrayList<>();
+        peList.add(new Pe(0, new PeProvisionerSimple(mips)));
+        peList.add(new Pe(1, new PeProvisionerSimple(mips)));
+        
+        // Create Host
+        hostList.add(new Host(
+            hostId,
+            new RamProvisionerSimple(ram),
+            new BwProvisionerSimple(bw),
+            storage,
+            peList,
+            new VmSchedulerTimeShared(peList)
+        ));
+        
+        // Datacenter characteristics
+        String arch = "x86";
+        String os = "Linux";
+        String vmm = "Xen";
+        double time_zone = 10.0;
+        double cost = 3.0;
+        double costPerMem = 0.05;
+        double costPerStorage = 0.001;
+        double costPerBw = 0.0;
+        
+        DatacenterCharacteristics characteristics = new DatacenterCharacteristics(
+            arch, os, vmm, hostList, time_zone, cost, costPerMem, 
+            costPerStorage, costPerBw
+        );
+        
+        // Create Datacenter
+        Datacenter datacenter = null;
+        try {
+            datacenter = new Datacenter(
+                name, 
+                characteristics, 
+                new VmAllocationPolicySimple(hostList), 
+                new LinkedList<Storage>(), 
+                0
+            );
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        
+        return datacenter;
+    }
+    
+    private DatacenterBroker createBroker() {
+        DatacenterBroker broker = null;
+        try {
+            broker = new DatacenterBroker("Broker");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+        return broker;
+    }
+    
+    private void displayResults(List<Cloudlet> list) {
+        StringBuilder results = new StringBuilder();
+        results.append("========== SIMULATION RESULTS ==========\n\n");
+        results.append(String.format("%-15s %-15s %-15s %-15s %-15s\n", 
+            "Cloudlet ID", "Status", "Datacenter ID", "VM ID", "Time"));
+        results.append("================================================================\n");
+        
+        for (Cloudlet cloudlet : list) {
+            results.append(String.format("%-15d %-15s %-15d %-15d %-15.2f\n",
+                cloudlet.getCloudletId(),
+                cloudlet.getCloudletStatusString(),
+                cloudlet.getResourceId(),
+                cloudlet.getVmId(),
+                cloudlet.getActualCPUTime()
+            ));
+        }
+        
+        // Show results in a text area dialog
+        JTextArea textArea = new JTextArea(results.toString());
+        textArea.setEditable(false);
+        textArea.setFont(new Font("Monospaced", Font.PLAIN, 12));
+        
+        JScrollPane scrollPane = new JScrollPane(textArea);
+        scrollPane.setPreferredSize(new Dimension(600, 400));
+        
+        JOptionPane.showMessageDialog(this, scrollPane, 
+            "Simulation Results", JOptionPane.INFORMATION_MESSAGE);
+        
+        // Reset for next simulation
+        cloudletList.clear();
+        vmList.clear();
+        cloudletId = 0;
+        vmId = 0;
+    }
+    
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> {
+            InterfaceTPCLOUD gui = new InterfaceTPCLOUD();
+            gui.setVisible(true);
+        });
+    }
+}
